@@ -1,0 +1,40 @@
+=== Survey-weighted Ordinal Regression (svyolr) ===
+
+Call:
+svyolr(glu_cat ~ vitd + age + sex + race, design = nhanes_svy)
+
+Coefficients:
+                                               Value  Std. Error    t value
+vitd                                    -0.008470366 0.001124156 -7.5348680
+age                                      0.045406763 0.001460491 31.0900625
+sexFemale                                0.680457173 0.051368026 13.2467067
+raceNon-Hispanic Asian                  -0.315017673 0.098763243 -3.1896246
+raceNon-Hispanic Black                  -0.652009353 0.073569570 -8.8624869
+raceNon-Hispanic White                  -0.395277347 0.077765274 -5.0829545
+raceOther Hispanic                      -0.297278904 0.095006337 -3.1290429
+raceOther Race - Including Multi-Racial -0.021824874 0.142971210 -0.1526522
+
+Intercepts:
+                  Value   Std. Error t value
+Normal|Impaired    1.3593  0.1028    13.2273
+Impaired|Diabetic  3.8714  0.1240    31.2125
+(27145 observations deleted due to missingness)
+                                   vitd                                     age                               sexFemale 
+                              0.9915654                               1.0464534                               1.9747803 
+                 raceNon-Hispanic Asian                  raceNon-Hispanic Black                  raceNon-Hispanic White 
+                              0.7297760                               0.5209979                               0.6734932 
+                     raceOther Hispanic raceOther Race - Including Multi-Racial                         Normal|Impaired 
+                              0.7428368                               0.9784116                               3.8933786 
+                      Impaired|Diabetic 
+                             48.0101971 
+                                             2.5 %     97.5 %
+vitd                                     0.9893831  0.9937525
+age                                      1.0434622  1.0494532
+sexFemale                                1.7856414  2.1839533
+raceNon-Hispanic Asian                   0.6013428  0.8856395
+raceNon-Hispanic Black                   0.4510383  0.6018087
+raceNon-Hispanic White                   0.5782815  0.7843812
+raceOther Hispanic                       0.6166289  0.8948762
+raceOther Race - Including Multi-Racial  0.7393061  1.2948483
+Normal|Impaired                          3.1831330  4.7620998
+Impaired|Diabetic                       37.6491635 61.2225827
