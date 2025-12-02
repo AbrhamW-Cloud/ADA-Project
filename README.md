@@ -31,7 +31,7 @@ MEC Exam Weights: WTMEC2YR
 
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
 # Repository Structure
-. .
+. 
 ├── R/
 │   └── nhanes_glucose_vitd_assumptions_first.R
 │
