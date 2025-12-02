@@ -59,13 +59,13 @@ Creates a 3-level ordered fasting glucose outcome:
 Normal → Impaired → Diabetic
 Recodes predictors:
 
-Vitamin D (LBXVIDMS → vitd)
+- Vitamin D (LBXVIDMS → vitd)
 
-Age (RIDAGEYR → age)
+- Age (RIDAGEYR → age)
 
-Sex (RIAGENDR → sex)
+- Sex (RIAGENDR → sex)
 
-Race/ethnicity (RIDRETH3 → race)
+- Race/ethnicity (RIDRETH3 → race)
 
 Performs sanity checks (variable names, summaries)
 
@@ -82,7 +82,6 @@ svydesign(
 )
 This provides unbiased variance estimation using Taylor linearization.
 
----
 
 ## **C. Assumption Checks**
 ### 1. Linearity in the Logit (Box–Tidwell Method)
@@ -100,10 +99,9 @@ Non-significant interaction terms → linearity assumption supported.
 Assessed using VIF from the full logistic regression model.
 All predictors showed acceptable VIF values (generally VIF < 3).
 
----
 
 ### **D. Statistical Models**
-1. Binary Logistic Regression
+#### 1. Binary Logistic Regression
 
 Two survey-weighted models:
 
@@ -119,7 +117,7 @@ Odds ratios and 95% confidence intervals are calculated using exponentiated coef
 
 A coefficient comparison table evaluates whether associations are similar across outcome thresholds.
 
-2. Survey-Weighted Ordinal Logistic Regression
+#### 2. Survey-Weighted Ordinal Logistic Regression
 A proportional-odds model is fitted using:
 svyolr(glu_cat ~ vitd + age + sex + race, design = nhanes_svy)
 The ordinal model provides a single set of odds ratios representing the cumulative odds of being in higher fasting glucose categories.
