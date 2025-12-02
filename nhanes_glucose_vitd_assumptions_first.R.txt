@@ -3,46 +3,64 @@
 # Author: Abrham Azale
 # Date: 2025
 #
-# Note:
-#   This script corresponds to my ADA final project. It includes all steps
-#   used to prepare the analytic dataset, check model assumptions,
-#   and fit survey-weighted logistic and ordinal regression models.
+# Description:
+#   This script:
+#     1. Imports the prepared NHANES dataset (nhanes_all.csv)
+#     2. Creates analysis variables (fasting glucose categories, predictors)
+#     3. Defines the complex NHANES survey design
+#     4. Checks key assumptions for survey-weighted logistic regression:
+#          - Linearity in the logit (Box–Tidwell style)
+#          - Multicollinearity (Variance Inflation Factors)
+#     5. Fits two survey-weighted logistic regression models:
+#          - Model 1: Normal vs Impaired/Diabetic
+#          - Model 2: Diabetic vs Normal/Impaired
+#     6. Fits a survey-weighted ordinal logistic regression model
+#     7. Saves model summaries and odds ratios to text files
 #
-#   I added several sanity checks and comments describing my reasoning
-#   to ensure transparency and reproducibility.
+#   This corresponds to my ADA final project and is written to be
+#   transparent and fully reproducible.
 ############################################################
 
 ## 0. Packages --------------------------------------------------------------
 
-library(tidyverse)   # data wrangling, read_csv
-library(survey)      # complex survey design + svyglm/svyolr
-library(car)         # VIF for multicollinearity assessment
+# Data manipulation and I/O
+library(tidyverse)   # dplyr, readr, etc.
 
-# Optional: recommended when NHANES strata contain a single PSU
+# Complex survey analysis
+library(survey)      # svydesign, svyglm, svyolr
+
+# Multicollinearity diagnostics
+library(car)         # vif()
+
+# Optional: handle lonely PSUs (not used here, but commonly recommended)
 # options(survey.lonely.psu = "adjust")
 
 
 ## 1. Import data -----------------------------------------------------------
 
-# The CSV file must be in the working directory.
+# Assumes "nhanes_all.csv" is in the current working directory.
+# (Use getwd() to check or setwd() to change if necessary.)
 df <- read_csv("nhanes_all.csv")
 
-# Quick sanity check to ensure variables loaded correctly
-names(df)
-summary(df$LBXVIDMS)
-summary(df$LBXGLU)
+# Quick sanity checks (helpful during development; can be commented out later)
+names(df)             # variable names
+summary(df$LBXVIDMS)  # vitamin D
+summary(df$LBXGLU)    # fasting glucose
 
 
-## 2. Create analysis variables ---------------------------------------------
+## 2. Create analysis variables --------------------------------------------
 
 df <- df %>%
   mutate(
-    # Glucose categories based on ADA clinical cutpoints
+    # 2a. Fasting glucose categories based on ADA cutpoints:
+    #     Normal   : < 100 mg/dL
+    #     Impaired : 100–125 mg/dL
+    #     Diabetic : ≥ 126 mg/dL
     glu_cat = case_when(
       LBXGLU < 100 ~ "Normal",
       LBXGLU >= 100 & LBXGLU <= 125 ~ "Impaired",
       LBXGLU >= 126 ~ "Diabetic",
-      TRUE ~ NA_character_
+      TRUE ~ NA_character_          # includes missing glucose values
     ),
     glu_cat = factor(
       glu_cat,
@@ -50,21 +68,42 @@ df <- df %>%
       ordered = TRUE
     ),
 
-    # Main predictors
-    vitd = LBXVIDMS,
-    age  = RIDAGEYR,
+    # 2b. Main continuous predictors
+    vitd = LBXVIDMS,   # serum 25(OH) vitamin D
+    age  = RIDAGEYR,   # age in years
 
-    # Recoding demographics
+    # 2c. Demographic covariates
+    # RIAGENDR: 1 = Male, 2 = Female (NHANES)
     sex  = factor(RIAGENDR, labels = c("Male", "Female")),
-    race = factor(RIDRETH3)
+
+    # RIDRETH3: Race/ethnicity categories.
+    # Here we explicitly define levels for clarity and reproducibility.
+    race = factor(
+      RIDRETH3,
+      levels = c(
+        "Mexican American",
+        "Other Hispanic",
+        "Non-Hispanic White",
+        "Non-Hispanic Black",
+        "Non-Hispanic Asian",
+        "Other Race - Including Multi-Racial"
+      )
+    )
   )
 
-# Distribution check before modeling
+# Check distribution of outcome categories (for descriptive results)
 table(df$glu_cat, useNA = "ifany")
+
+# Optional: check race levels to confirm coding
+levels(df$race)
 
 
 ## 3. Define survey design --------------------------------------------------
 
+# Define NHANES survey design using MEC exam weights
+#   id      : SDMVPSU  (primary sampling units)
+#   strata  : SDMVSTRA (strata)
+#   weights : WTMEC2YR (MEC exam weights for lab measures)
 nhanes_svy <- svydesign(
   id      = ~SDMVPSU,
   strata  = ~SDMVSTRA,
@@ -74,13 +113,13 @@ nhanes_svy <- svydesign(
 )
 
 # Rationale:
-#   I use MEC weights (WTMEC2YR) because both Vitamin D and fasting glucose
-#   are NHANES laboratory measures collected in the MEC exam component.
+#   Both serum vitamin D and fasting glucose are measured in the MEC exam
+#   component; using WTMEC2YR yields nationally representative estimates.
 
 
 ## 4. ASSUMPTION CHECKS -----------------------------------------------------
 
-## 4a. Binary outcome for Model 1: Normal (0) vs Impaired/Diabetic (1)
+## 4a. Binary outcome for Model 1: Normal (0) vs Impaired/Diabetic (1) -----
 
 nhanes_svy1 <- update(
   nhanes_svy,
@@ -88,18 +127,22 @@ nhanes_svy1 <- update(
                    ifelse(!is.na(glu_cat), 1, NA))
 )
 
+# Keep only observations with non-missing binary outcome
 nhanes_svy1_sub <- subset(nhanes_svy1, !is.na(binary1))
 
 
-## 4b. Linearity in the logit (Box–Tidwell style)
+## 4b. Linearity in the logit (Box–Tidwell style) --------------------------
 
+# Create Box–Tidwell interaction terms for continuous predictors
 nhanes_svy1_bt <- update(
   nhanes_svy1,
   vitd_log = vitd * log(vitd),
   age_log  = age  * log(age)
 )
 
-# Vitamin D linearity
+# Linearity test for vitamin D:
+#   If vitd_log is non-significant, the logit is approximately
+#   linear in vitd.
 test_vitd <- svyglm(
   binary1 ~ vitd + vitd_log + age + sex + race,
   design = subset(nhanes_svy1_bt, !is.na(binary1)),
@@ -107,7 +150,9 @@ test_vitd <- svyglm(
 )
 summary(test_vitd)
 
-# Age linearity
+# Linearity test for age:
+#   If age_log is non-significant, the logit is approximately
+#   linear in age.
 test_age <- svyglm(
   binary1 ~ age + age_log + vitd + sex + race,
   design = subset(nhanes_svy1_bt, !is.na(binary1)),
@@ -115,29 +160,32 @@ test_age <- svyglm(
 )
 summary(test_age)
 
-# Interpretation:
-#   Non-significant interaction terms (vitd_log, age_log)
-#   support linearity in the logit.
+# Interpretation (for write-up):
+#   Non-significant vitd_log and age_log terms suggest no strong
+#   evidence against the linearity-in-the-logit assumption for these
+#   predictors (although borderline p-values can be noted).
 
 
 ## 4c. Multicollinearity (VIF) ----------------------------------------------
 
+# Fit survey-weighted logistic model with all predictors to assess VIF
 m1_assess <- svyglm(
   binary1 ~ vitd + age + sex + race,
   design = nhanes_svy1_sub,
   family = quasibinomial()
 )
 
-# VIF values for multicollinearity
-vif(m1_assess)
+# Compute Variance Inflation Factors (VIFs)
+vif_m1 <- vif(m1_assess)
+vif_m1
 
-# Note:
-#   All VIF values < 3 → no multicollinearity concerns.
+# Rule of thumb:
+#   VIF < 3 (or even < 5) indicates no serious multicollinearity concerns.
 
 
 ## 5. FINAL SURVEY-WEIGHTED LOGISTIC MODELS ---------------------------------
 
-## Model 1: Normal vs Impaired/Diabetic
+## Model 1: Normal vs Impaired/Diabetic -------------------------------------
 
 m1 <- svyglm(
   binary1 ~ vitd + age + sex + race,
@@ -146,7 +194,7 @@ m1 <- svyglm(
 )
 summary(m1)
 
-# Odds ratios + CI
+# Convert log-odds to odds ratios and 95% confidence intervals
 m1_or <- exp(coef(m1))
 m1_ci <- exp(confint(m1))
 
@@ -158,8 +206,9 @@ m1_results <- cbind(
 m1_results
 
 
-## Model 2: Diabetic vs Normal/Impaired
+## Model 2: Diabetic (1) vs Normal/Impaired (0) -----------------------------
 
+# Create binary outcome for diabetes vs non-diabetes
 nhanes_svy2 <- update(
   nhanes_svy,
   binary2 = ifelse(glu_cat == "Diabetic", 1,
@@ -185,13 +234,16 @@ m2_results <- cbind(
 )
 m2_results
 
-# Quick comparison of regression estimates
+# Compare coefficients across the two logistic models.
+# Similar directions and magnitudes support using a proportional-odds
+# ordinal model as a secondary analysis.
 coef_comparison <- cbind(m1 = coef(m1), m2 = coef(m2))
 coef_comparison
 
 
 ## 6. SECONDARY ANALYSIS: Ordinal regression --------------------------------
 
+# Survey-weighted proportional-odds ordinal logistic regression
 model_ord <- svyolr(
   glu_cat ~ vitd + age + sex + race,
   design = nhanes_svy
@@ -199,33 +251,50 @@ model_ord <- svyolr(
 
 summary(model_ord)
 
-ord_or <- exp(coef(model_ord))
-ord_ci <- exp(confint(model_ord))
+# Exponentiate coefficients to obtain common odds ratios
+ord_coef <- coef(model_ord)
+ord_or   <- exp(ord_coef)
+ord_ci   <- exp(confint(model_ord))
 
 
 ## 7. Save Outputs ----------------------------------------------------------
 
-# Create output directory if it doesn't exist
+# Create output directory if it does not already exist
 if (!dir.exists("output")) dir.create("output")
 
-# Logistic models
+### 7a. Logistic model results ----------------------------------------------
+
 sink("output/model_results_logistic.txt")
+
 cat("=== Model 1: Normal vs Impaired/Diabetic ===\n\n")
 print(summary(m1))
+cat("\nOdds Ratios and 95% CI:\n")
 print(m1_results)
 
 cat("\n\n=== Model 2: Diabetic vs Normal/Impaired ===\n\n")
 print(summary(m2))
+cat("\nOdds Ratios and 95% CI:\n")
 print(m2_results)
-sink()
 
-# Ordinal model
+cat("\n\n=== VIF for Multicollinearity (Model 1) ===\n\n")
+print(vif_m1)
+
+sink()  # close first sink
+
+
+### 7b. Ordinal model results -----------------------------------------------
+
 sink("output/model_results_ordinal.txt")
+
 cat("=== Survey-weighted Ordinal Regression (svyolr) ===\n\n")
 print(summary(model_ord))
+
+cat("\nExponentiated Coefficients (OR) and 95% CI:\n\n")
 print(ord_or)
 print(ord_ci)
-sink()
+
+sink()  # close second sink
+
 
 # End of script
 ############################################################
