@@ -73,23 +73,22 @@ df <- df %>%
     age  = RIDAGEYR,   # age in years
 
     # 2c. Demographic covariates
-    # RIAGENDR: 1 = Male, 2 = Female (NHANES)
     sex  = factor(RIAGENDR, labels = c("Male", "Female")),
 
-    # RIDRETH3: Race/ethnicity categories.
-    # Here we explicitly define levels for clarity and reproducibility.
+    # RIDRETH3: Race/ethnicity categories
     race = factor(
-  RIDRETH3,
-  levels = c(1, 2, 3, 4, 6, 7),
-  labels = c(
-    "Mexican American",
-    "Other Hispanic",
-    "Non-Hispanic White",
-    "Non-Hispanic Black",
-    "Non-Hispanic Asian",
-    "Other/Multi-Racial"
+      RIDRETH3,
+      levels = c(1, 2, 3, 4, 6, 7),
+      labels = c(
+        "Mexican American",
+        "Other Hispanic",
+        "Non-Hispanic White",
+        "Non-Hispanic Black",
+        "Non-Hispanic Asian",
+        "Other/Multi-Racial"
+      )
+    )
   )
-)
 
 # Check distribution of outcome categories (for descriptive results)
 table(df$glu_cat, useNA = "ifany")
