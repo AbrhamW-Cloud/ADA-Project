@@ -32,7 +32,11 @@ MEC Exam Weights: WTMEC2YR
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
 # Files Included
 The repository currently contains the following files:
----text
+## 📁 Files Included
+
+The repository currently contains the following files:
+
+```text
 .
 ├── README.md
 │   └── Project documentation and overview
@@ -46,7 +50,6 @@ The repository currently contains the following files:
         - Multicollinearity checks (VIF)
         - Logistic regression models
         - Ordinal regression model
-----text
 
 # Repository Structure
 Repository Structure
