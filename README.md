@@ -1,5 +1,5 @@
 # Vitamin D and Fasting Glucose Analysis in NHANES(2011-2018)
-This repository contains survey-weighted statistical analyses examining the association between serum vitamin D levels and fasting glucose categories using NHANES data. The analysis includes:
+This repository contains survey-weighted statistical analyses examining the association between serum vitamin D levels and fasting glucose categories using NHANES data from 2011-2018. The analysis includes:
 
 - Survey-weighted ordinal regression (svyolr)
 
