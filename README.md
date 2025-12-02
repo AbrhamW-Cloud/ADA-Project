@@ -121,7 +121,7 @@ A proportional-odds model is fitted using:
 svyolr(glu_cat ~ vitd + age + sex + race, design = nhanes_svy)
 The ordinal model provides a single set of odds ratios representing the cumulative odds of being in higher fasting glucose categories.
 
-### E.OUTPUT FILES
+### E. OUTPUT FILES
 All results are automatically written to the output/ directory.
 
 model_results_logistic.txt
