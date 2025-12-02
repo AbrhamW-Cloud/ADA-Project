@@ -40,7 +40,7 @@ The repository currently contains the following files:
 │   └── Project documentation and overview
 ├── nhanes_all.csv
 │   └── Combined NHANES dataset used for the analysis
-└── nhanes_glucose_vitd_assumptions_first.R
+└── nhanes_glucose_vitd-R script.txt
     └── Main R script containing:
         - Data preparation
         - Survey design specification
