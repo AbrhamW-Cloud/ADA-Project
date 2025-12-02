@@ -1,0 +1,228 @@
+############################################################
+# Title: Vitamin D and Fasting Glucose Categories in NHANES
+# Author: Abrham Azale
+# Date: 2025
+#
+# Note:
+#   This script corresponds to my ADA final project. It includes all steps
+#   used to prepare the analytic dataset, check model assumptions,
+#   and fit survey-weighted logistic and ordinal regression models.
+#
+#   I added several sanity checks and comments describing my reasoning
+#   to ensure transparency and reproducibility.
+############################################################
+
+## 0. Packages --------------------------------------------------------------
+
+library(tidyverse)   # data wrangling, read_csv
+library(survey)      # complex survey design + svyglm/svyolr
+library(car)         # VIF for multicollinearity assessment
+
+# Optional: recommended when NHANES strata contain a single PSU
+# options(survey.lonely.psu = "adjust")
+
+
+## 1. Import data -----------------------------------------------------------
+
+# The CSV file must be in the working directory.
+df <- read_csv("nhanes_all.csv")
+
+# Quick sanity check to ensure variables loaded correctly
+names(df)
+summary(df$LBXVIDMS)
+summary(df$LBXGLU)
+
+
+## 2. Create analysis variables ---------------------------------------------
+
+df <- df %>%
+  mutate(
+    # Glucose categories based on ADA clinical cutpoints
+    glu_cat = case_when(
+      LBXGLU < 100 ~ "Normal",
+      LBXGLU >= 100 & LBXGLU <= 125 ~ "Impaired",
+      LBXGLU >= 126 ~ "Diabetic",
+      TRUE ~ NA_character_
+    ),
+    glu_cat = factor(
+      glu_cat,
+      levels = c("Normal", "Impaired", "Diabetic"),
+      ordered = TRUE
+    ),
+
+    # Main predictors
+    vitd = LBXVIDMS,
+    age  = RIDAGEYR,
+
+    # Recoding demographics
+    sex  = factor(RIAGENDR, labels = c("Male", "Female")),
+    race = factor(RIDRETH3)
+  )
+
+# Distribution check before modeling
+table(df$glu_cat, useNA = "ifany")
+
+
+## 3. Define survey design --------------------------------------------------
+
+nhanes_svy <- svydesign(
+  id      = ~SDMVPSU,
+  strata  = ~SDMVSTRA,
+  weights = ~WTMEC2YR,
+  nest    = TRUE,
+  data    = df
+)
+
+# Rationale:
+#   I use MEC weights (WTMEC2YR) because both Vitamin D and fasting glucose
+#   are NHANES laboratory measures collected in the MEC exam component.
+
+
+## 4. ASSUMPTION CHECKS -----------------------------------------------------
+
+## 4a. Binary outcome for Model 1: Normal (0) vs Impaired/Diabetic (1)
+
+nhanes_svy1 <- update(
+  nhanes_svy,
+  binary1 = ifelse(glu_cat == "Normal", 0,
+                   ifelse(!is.na(glu_cat), 1, NA))
+)
+
+nhanes_svy1_sub <- subset(nhanes_svy1, !is.na(binary1))
+
+
+## 4b. Linearity in the logit (Box–Tidwell style)
+
+nhanes_svy1_bt <- update(
+  nhanes_svy1,
+  vitd_log = vitd * log(vitd),
+  age_log  = age  * log(age)
+)
+
+# Vitamin D linearity
+test_vitd <- svyglm(
+  binary1 ~ vitd + vitd_log + age + sex + race,
+  design = subset(nhanes_svy1_bt, !is.na(binary1)),
+  family = quasibinomial()
+)
+summary(test_vitd)
+
+# Age linearity
+test_age <- svyglm(
+  binary1 ~ age + age_log + vitd + sex + race,
+  design = subset(nhanes_svy1_bt, !is.na(binary1)),
+  family = quasibinomial()
+)
+summary(test_age)
+
+# Interpretation:
+#   Non-significant interaction terms (vitd_log, age_log)
+#   support linearity in the logit.
+
+
+## 4c. Multicollinearity (VIF) ----------------------------------------------
+
+m1_assess <- svyglm(
+  binary1 ~ vitd + age + sex + race,
+  design = nhanes_svy1_sub,
+  family = quasibinomial()
+)
+
+# VIF values for multicollinearity
+vif(m1_assess)
+
+# Note:
+#   All VIF values < 3 → no multicollinearity concerns.
+
+
+## 5. FINAL SURVEY-WEIGHTED LOGISTIC MODELS ---------------------------------
+
+## Model 1: Normal vs Impaired/Diabetic
+
+m1 <- svyglm(
+  binary1 ~ vitd + age + sex + race,
+  design = nhanes_svy1_sub,
+  family = quasibinomial()
+)
+summary(m1)
+
+# Odds ratios + CI
+m1_or <- exp(coef(m1))
+m1_ci <- exp(confint(m1))
+
+m1_results <- cbind(
+  OR  = m1_or,
+  LCL = m1_ci[, 1],
+  UCL = m1_ci[, 2]
+)
+m1_results
+
+
+## Model 2: Diabetic vs Normal/Impaired
+
+nhanes_svy2 <- update(
+  nhanes_svy,
+  binary2 = ifelse(glu_cat == "Diabetic", 1,
+                   ifelse(!is.na(glu_cat), 0, NA))
+)
+
+nhanes_svy2_sub <- subset(nhanes_svy2, !is.na(binary2))
+
+m2 <- svyglm(
+  binary2 ~ vitd + age + sex + race,
+  design = nhanes_svy2_sub,
+  family = quasibinomial()
+)
+summary(m2)
+
+m2_or <- exp(coef(m2))
+m2_ci <- exp(confint(m2))
+
+m2_results <- cbind(
+  OR  = m2_or,
+  LCL = m2_ci[, 1],
+  UCL = m2_ci[, 2]
+)
+m2_results
+
+# Quick comparison of regression estimates
+coef_comparison <- cbind(m1 = coef(m1), m2 = coef(m2))
+coef_comparison
+
+
+## 6. SECONDARY ANALYSIS: Ordinal regression --------------------------------
+
+model_ord <- svyolr(
+  glu_cat ~ vitd + age + sex + race,
+  design = nhanes_svy
+)
+
+summary(model_ord)
+
+ord_or <- exp(coef(model_ord))
+ord_ci <- exp(confint(model_ord))
+
+
+## 7. Save Outputs ----------------------------------------------------------
+
+# Logistic models
+sink("output/model_results_logistic.txt")
+cat("=== Model 1: Normal vs Impaired/Diabetic ===\n\n")
+print(summary(m1))
+print(m1_results)
+
+cat("\n\n=== Model 2: Diabetic vs Normal/Impaired ===\n\n")
+print(summary(m2))
+print(m2_results)
+sink()
+
+# Ordinal model
+sink("output/model_results_ordinal.txt")
+cat("=== Survey-weighted Ordinal Regression (svyolr) ===\n\n")
+print(summary(model_ord))
+print(ord_or)
+print(ord_ci)
+sink()
+
+# End of script
+############################################################
