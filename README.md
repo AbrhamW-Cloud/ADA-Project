@@ -31,7 +31,8 @@ MEC Exam Weights: WTMEC2YR
 
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
 # Repository Structure
-. 
+Repository Structure
+.
 ├── R/
 │   └── nhanes_glucose_vitd_assumptions_first.R
 │
@@ -39,10 +40,10 @@ Using the correct NHANES design ensures that results are nationally representati
 │   ├── model_results_logistic.txt
 │   └── model_results_ordinal.txt
 │
-├── data/          (optional, not included)
-│   └── nhanes_all.csv
+├── nhanes_all.csv   (this file must be placed in the project root)
 │
 └── README.md
+
 
 
 # Methods Summary
