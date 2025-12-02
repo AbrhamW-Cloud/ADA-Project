@@ -50,7 +50,7 @@ The repository currently contains the following files:
         - Multicollinearity checks (VIF)
         - Logistic regression models
         - Ordinal regression model
-
+```text
 # Repository Structure
 Repository Structure
 .
