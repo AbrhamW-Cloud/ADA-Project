@@ -30,6 +30,23 @@ Primary Sampling Units (Clusters): SDMVPSU
 MEC Exam Weights: WTMEC2YR
 
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
+# Files Included
+The repository currently contains the following files:
+.
+├── README.md
+│   └── Project documentation and overview
+├── nhanes_all.csv
+│   └── Combined NHANES dataset used for the analysis
+└── nhanes_glucose_vitd_assumptions_first.R
+    └── Main R script containing:
+        - Data preparation
+        - Survey design specification
+        - Linearity (Box–Tidwell) tests
+        - Multicollinearity checks (VIF)
+        - Logistic regression models
+        - Ordinal regression model
+
+
 # Repository Structure
 Repository Structure
 .
