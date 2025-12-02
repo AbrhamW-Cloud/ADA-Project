@@ -137,7 +137,7 @@ Contains the proportional-odds model output and exponentiated coefficients.
    source("R/nhanes_glucose_vitd_assumptions_first.R")
 All model outputs will appear in the output/ folder.
 
-# **NHANES Reference**
+# **Reference**
 National Health and Nutrition Examination Survey (NHANES)
 Centers for Disease Control and Prevention (CDC)
 https://www.cdc.gov/nchs/nhanes.htm
