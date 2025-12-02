@@ -129,7 +129,7 @@ Contains summaries, odds ratios, confidence intervals, and VIF results for Model
 
 model_results_ordinal.txt
 Contains the proportional-odds model output and exponentiated coefficients.
-# RUNNING ANALYSIS
+# Running the Analysis
 1. Install Required Packages
    install.packages(c("tidyverse", "survey", "car"))
 2. Run the Full Analysis Script
