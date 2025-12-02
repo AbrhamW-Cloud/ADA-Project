@@ -2,31 +2,70 @@
 This repository contains survey-weighted statistical analyses examining the association between serum vitamin D levels and fasting glucose categories using NHANES data. The analysis includes:
 
 -Survey-weighted ordinal regression (svyolr)
--Survey-weighted logistic regression (svyglm, quasibinomial)
+
+-Survey-weighted binary logistic regression (svyglm, quasibinomial)
+
 Assumption checks for:
+
 -Linearity in the logit (Box–Tidwell approach)
+
 -Multicollinearity (Variance Inflation Factors)
+
+All methods correspond to the Advanced Data Analysis (ADA) final project.
 # Project Overview
 This project evaluates how serum 25-hydroxyvitamin D (LBXVIDMS) relates to fasting glucose status categorized as:
 
 Normal: < 100 mg/dL
+
 Impaired: 100–125 mg/dL
+
 Diabetic: ≥ 126 mg/dL
-All analyses incorporate NHANES complex survey design features:
+
+Because both vitamin D and glucose are measured in the MEC exam component, all analyses apply the appropriate NHANES complex survey design, including:
 
 Stratification: SDMVSTRA
-Primary Sampling Units: SDMVPSU
-MEC Exam Weights: WTMEC2YR
-Using the NHANES survey design ensures nationally representative and valid population estimates.
 
+Primary Sampling Units (Clusters): SDMVPSU
+
+MEC Exam Weights: WTMEC2YR
+
+Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
 # Repository Structure
-. ├── R/ │ └── nhanes_glucose_vitd_assumptions_first.R │ ├── output/ │ ├── model_results_logistic.txt │ └── model_results_ordinal.txt │ ├── data/ │ └── nhanes_all.csv (optional, not included) │ └── README.md
+. .
+├── R/
+│   └── nhanes_glucose_vitd_assumptions_first.R
+│
+├── output/
+│   ├── model_results_logistic.txt
+│   └── model_results_ordinal.txt
+│
+├── data/          (optional, not included)
+│   └── nhanes_all.csv
+│
+└── README.md
+
 
 # Methods Summary
 ## A. Data Preparation
-Created fasting glucose categories (Normal, Impaired, Diabetic)
-Recoded predictors including vitamin D, age, sex, and race
-Removed missing values only for relevant models
+The script:
+
+Reads the full analytic dataset (nhanes_all.csv)
+
+Creates a 3-level ordered fasting glucose outcome:
+Normal → Impaired → Diabetic
+Recodes predictors:
+
+Vitamin D (LBXVIDMS → vitd)
+
+Age (RIDAGEYR → age)
+
+Sex (RIAGENDR → sex)
+
+Race/ethnicity (RIDRETH3 → race)
+
+Performs sanity checks (variable names, summaries)
+
+Missing values are removed only when required for each model.
 ## B. Survey Design
 NHANES survey design was defined as:
 
@@ -37,71 +76,64 @@ svydesign(
   nest    = TRUE,
   data    = df
 )
+This provides unbiased variance estimation using Taylor linearization.
 
 ---
 
 ## **C. Assumption Checks**
-### 1. Linearity in the Logit
-Interaction terms tested:
+### 1. Linearity in the Logit (Box–Tidwell Method)
+
+Interaction terms evaluated:
 
 vitd * log(vitd)
 
 age * log(age)
 
-Non-significant interaction terms indicate the linearity assumption was not violated.
+Non-significant interaction terms → linearity assumption supported.
 
 ### 2. Multicollinearity
-Assessed using Variance Inflation Factors (VIF).
-All predictors showed acceptable VIF values (VIF < 3).
+
+Assessed using VIF from the full logistic regression model.
+All predictors showed acceptable VIF values (generally VIF < 3).
 
 ---
 
 ### **D. Statistical Models**
 1. Binary Logistic Regression
+
 Two survey-weighted models:
 
-Model 1: Normal (0) vs Impaired/Diabetic (1)
+Model 1:
+Normal (0) vs Impaired/Diabetic (1)
 
-Model 2: Diabetic (1) vs Normal/Impaired (0)
+Model 2:
+Diabetic (1) vs Normal/Impaired (0)
 
-2. Ordinal Logistic Regression
-Proportional odds model:
+Models fitted using:
+svyglm(..., family = quasibinomial())
+Odds ratios and 95% confidence intervals are calculated using exponentiated coefficients.
 
-r
-Copy code
+A coefficient comparison table evaluates whether associations are similar across outcome thresholds.
+
+2. Survey-Weighted Ordinal Logistic Regression
+A proportional-odds model is fitted using:
 svyolr(glu_cat ~ vitd + age + sex + race, design = nhanes_svy)
-Files Included
-R/nhanes_glucose_vitd_assumptions_first.R
-Contains:
+The ordinal model provides a single set of odds ratios representing the cumulative odds of being in higher fasting glucose categories.
 
-Data preparation
+### E.OUTPUT FILES
+All results are automatically written to the output/ directory.
 
-Survey design setup
+model_results_logistic.txt
+Contains summaries, odds ratios, confidence intervals, and VIF results for Models 1 and 2.
 
-Linearity tests
-
-VIF analysis
-
-Logistic regression models
-
-Ordinal regression model
-
-output/model_results_logistic.txt
-Results from the two binary logistic regression models.
-
-output/model_results_ordinal.txt
-Results from the survey-weighted ordinal regression model.
-
-Running the Analysis
-Required R packages
-
-install.packages(c("tidyverse", "survey", "car"))
-Run the full analysis
-
-source("R/nhanes_glucose_vitd_assumptions_first.R")
-All model outputs will be saved automatically in the output/ directory.
-
----
+model_results_ordinal.txt
+Contains the proportional-odds model output and exponentiated coefficients.
+# RUNNING ANALYSIS
+1. Install Required Packages
+   install.packages(c("tidyverse", "survey", "car"))
+2. Run the Full Analysis Script
+   source("R/nhanes_glucose_vitd_assumptions_first.R")
+All model outputs will appear in the output/ folder.
 
 # **NHANES Reference**
 National Health and Nutrition Examination Survey (NHANES)
