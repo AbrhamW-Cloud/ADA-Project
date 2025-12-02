@@ -79,17 +79,17 @@ df <- df %>%
     # RIDRETH3: Race/ethnicity categories.
     # Here we explicitly define levels for clarity and reproducibility.
     race = factor(
-      RIDRETH3,
-      levels = c(
-        "Mexican American",
-        "Other Hispanic",
-        "Non-Hispanic White",
-        "Non-Hispanic Black",
-        "Non-Hispanic Asian",
-        "Other Race - Including Multi-Racial"
-      )
-    )
+  RIDRETH3,
+  levels = c(1, 2, 3, 4, 6, 7),
+  labels = c(
+    "Mexican American",
+    "Other Hispanic",
+    "Non-Hispanic White",
+    "Non-Hispanic Black",
+    "Non-Hispanic Asian",
+    "Other/Multi-Racial"
   )
+)
 
 # Check distribution of outcome categories (for descriptive results)
 table(df$glu_cat, useNA = "ifany")
