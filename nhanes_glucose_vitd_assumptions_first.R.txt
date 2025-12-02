@@ -142,11 +142,17 @@ nhanes_svy1_bt <- update(
 # Linearity test for vitamin D:
 #   If vitd_log is non-significant, the logit is approximately
 #   linear in vitd.
+bt_design <- subset(nhanes_svy1_bt, !is.na(binary1))
+bt_design <- update(bt_design,
+                    sex = droplevels(sex),
+                    race = droplevels(race))
+
 test_vitd <- svyglm(
   binary1 ~ vitd + vitd_log + age + sex + race,
-  design = subset(nhanes_svy1_bt, !is.na(binary1)),
+  design = bt_design,
   family = quasibinomial()
 )
+
 summary(test_vitd)
 
 # Linearity test for age:
