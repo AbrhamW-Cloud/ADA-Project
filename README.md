@@ -1,15 +1,15 @@
 # Vitamin D and Fasting Glucose Analysis in NHANES
 This repository contains survey-weighted statistical analyses examining the association between serum vitamin D levels and fasting glucose categories using NHANES data. The analysis includes:
 
--Survey-weighted ordinal regression (svyolr)
+- Survey-weighted ordinal regression (svyolr)
 
--Survey-weighted binary logistic regression (svyglm, quasibinomial)
+- Survey-weighted binary logistic regression (svyglm, quasibinomial)
 
 Assumption checks for:
 
--Linearity in the logit (Box–Tidwell approach)
+- Linearity in the logit (Box–Tidwell approach)
 
--Multicollinearity (Variance Inflation Factors)
+- Multicollinearity (Variance Inflation Factors)
 
 All methods correspond to the Advanced Data Analysis (ADA) final project.
 # Project Overview
