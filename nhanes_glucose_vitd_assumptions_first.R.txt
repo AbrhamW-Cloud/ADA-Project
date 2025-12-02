@@ -52,15 +52,11 @@ summary(df$LBXGLU)    # fasting glucose
 
 df <- df %>%
   mutate(
-    # 2a. Fasting glucose categories based on ADA cutpoints:
-    #     Normal   : < 100 mg/dL
-    #     Impaired : 100–125 mg/dL
-    #     Diabetic : ≥ 126 mg/dL
     glu_cat = case_when(
       LBXGLU < 100 ~ "Normal",
       LBXGLU >= 100 & LBXGLU <= 125 ~ "Impaired",
       LBXGLU >= 126 ~ "Diabetic",
-      TRUE ~ NA_character_          # includes missing glucose values
+      TRUE ~ NA_character_
     ),
     glu_cat = factor(
       glu_cat,
@@ -68,21 +64,25 @@ df <- df %>%
       ordered = TRUE
     ),
 
-    # 2b. Main continuous predictors
-    vitd = LBXVIDMS,   # serum 25(OH) vitamin D
-    age  = RIDAGEYR,   # age in years
+    vitd = LBXVIDMS,
+    age  = RIDAGEYR,
 
-    # 2c. Demographic covariates
-    # RIAGENDR: 1 = Male, 2 = Female (NHANES)
     sex  = factor(RIAGENDR, labels = c("Male", "Female")),
 
-    # RIDRETH3: Race/ethnicity categories.
-    # Levels: 1 = Mexican American, 2 = Other Hispanic, 3 = Non-Hispanic White,
-    #         4 = Non-Hispanic Black, 6 = Non-Hispanic Asian, 7 = Other/Multi-Racial
+    race = case_when(
+      RIDRETH3 %in% c(1, "1", "Mexican American") ~ "Mexican American",
+      RIDRETH3 %in% c(2, "2", "Other Hispanic") ~ "Other Hispanic",
+      RIDRETH3 %in% c(3, "3", "Non-Hispanic White") ~ "Non-Hispanic White",
+      RIDRETH3 %in% c(4, "4", "Non-Hispanic Black") ~ "Non-Hispanic Black",
+      RIDRETH3 %in% c(6, "6", "Non-Hispanic Asian") ~ "Non-Hispanic Asian",
+      RIDRETH3 %in% c(7, "7",
+                      "Other Race - Including Multi-Racial",
+                      "Other/Multi-Racial") ~ "Other/Multi-Racial",
+      TRUE ~ NA_character_
+    ),
     race = factor(
-      RIDRETH3,
-      levels = c(1, 2, 3, 4, 6, 7),
-      labels = c(
+      race,
+      levels = c(
         "Mexican American",
         "Other Hispanic",
         "Non-Hispanic White",
@@ -92,12 +92,6 @@ df <- df %>%
       )
     )
   )
-
-# Check distribution of outcome categories (for descriptive results)
-table(df$glu_cat, useNA = "ifany")
-
-# Optional: check race levels to confirm coding
-levels(df$race)
 
 
 ## 3. Define survey design --------------------------------------------------
