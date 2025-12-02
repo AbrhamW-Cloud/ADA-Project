@@ -30,7 +30,7 @@ Because both vitamin D and glucose are measured in the MEC exam component, all a
 - MEC Exam Weights: WTMEC2YR
 
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
-## 📁 Files Included
+##  Files Included
 
 The repository currently contains the following files:
 
@@ -49,24 +49,6 @@ The repository currently contains the following files:
         - Logistic regression models
         - Ordinal regression model
 ```
-
-# Repository Structure
-Repository Structure
-```text
-.
-├── R/
-│   └── nhanes_glucose_vitd_assumptions_first.R
-│
-├── output/
-│   ├── model_results_logistic.txt
-│   └── model_results_ordinal.txt
-│
-├── nhanes_all.csv   (this file must be placed in the project root)
-│
-└── README.md
-```
-
-
 # Methods Summary
 ## A. Data Preparation
 The script:
