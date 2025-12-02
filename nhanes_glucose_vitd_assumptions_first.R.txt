@@ -1,5 +1,5 @@
 ############################################################
-# Title: Vitamin D and Fasting Glucose Categories in NHANES
+# Title: Vitamin D and Fasting Glucose Analysis in NHANES
 # Author: Abrham Azale
 # Date: 2025
 #
