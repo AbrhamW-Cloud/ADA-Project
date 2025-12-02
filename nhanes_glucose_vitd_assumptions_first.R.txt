@@ -205,6 +205,9 @@ ord_ci <- exp(confint(model_ord))
 
 ## 7. Save Outputs ----------------------------------------------------------
 
+# Create output directory if it doesn't exist
+if (!dir.exists("output")) dir.create("output")
+
 # Logistic models
 sink("output/model_results_logistic.txt")
 cat("=== Model 1: Normal vs Impaired/Diabetic ===\n\n")
