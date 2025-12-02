@@ -1,4 +1,4 @@
-# Vitamin D and Fasting Glucose Analysis in NHANES
+# Vitamin D and Fasting Glucose Analysis in NHANES(2011-2018)
 This repository contains survey-weighted statistical analyses examining the association between serum vitamin D levels and fasting glucose categories using NHANES data. The analysis includes:
 
 - Survey-weighted ordinal regression (svyolr)
@@ -15,19 +15,19 @@ All methods correspond to the Advanced Data Analysis (ADA) final project.
 # Project Overview
 This project evaluates how serum 25-hydroxyvitamin D (LBXVIDMS) relates to fasting glucose status categorized as:
 
-Normal: < 100 mg/dL
+- Normal: < 100 mg/dL
 
-Impaired: 100–125 mg/dL
+- Impaired: 100–125 mg/dL
 
-Diabetic: ≥ 126 mg/dL
+- Diabetic: ≥ 126 mg/dL
 
 Because both vitamin D and glucose are measured in the MEC exam component, all analyses apply the appropriate NHANES complex survey design, including:
 
-Stratification: SDMVSTRA
+- Stratification: SDMVSTRA
 
-Primary Sampling Units (Clusters): SDMVPSU
+- Primary Sampling Units (Clusters): SDMVPSU
 
-MEC Exam Weights: WTMEC2YR
+- MEC Exam Weights: WTMEC2YR
 
 Using the correct NHANES design ensures that results are nationally representative and valid at the population level.
 ## 📁 Files Included
