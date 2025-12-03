@@ -8,10 +8,12 @@
 #     1. Imports the prepared NHANES dataset (nhanes_all.csv)
 #     2. Creates analysis variables (fasting glucose categories, predictors)
 #     3. Defines the complex NHANES survey design
-#     4. (Optional) Checks the proportional-odds assumption using an
-#        unweighted Brant test as a sensitivity analysis
+#     4. Checks key model assumptions:
+#          4a. Proportional-odds assumption (Brant test, unweighted)
+#          4b. Multicollinearity (VIF, unweighted)
+#          4c. Influential observations (Cook's distance, leverage)
 #     5. Fits a survey-weighted ordinal logistic regression model (svyolr)
-#     6. Saves model summary and odds ratios to a text file
+#     6. Saves model summary, odds ratios, and diagnostics to a text file
 #
 #   This corresponds to my ADA final project and is written to be
 #   transparent and fully reproducible.
@@ -28,6 +30,9 @@ library(survey)      # svydesign, svyolr
 # Optional: proportional-odds assumption check (unweighted)
 library(MASS)        # polr()
 library(brant)       # brant()
+
+# Optional: multicollinearity diagnostics
+library(car)         # vif()
 
 # Optional: handle lonely PSUs (commonly recommended)
 # options(survey.lonely.psu = "adjust")
@@ -114,9 +119,9 @@ nhanes_svy <- svydesign(
 #   component; using WTMEC2YR yields nationally representative estimates.
 
 
-## 4. OPTIONAL: Proportional-odds assumption check --------------------------
-## (Unweighted Brant test, used as a sensitivity analysis only.
-##  There is no standard survey-weighted Brant test implementation.)
+## 4. MODEL ASSUMPTION CHECKS ----------------------------------------------
+
+## 4a. Proportional-odds assumption (Brant test, unweighted) ---------------
 
 # Create complete-case dataset (base R — avoids select() conflict)
 po_data <- df[, c("glu_cat", "vitd", "age", "sex", "race")]
@@ -139,6 +144,57 @@ po_brant
 #   - Significant results can be discussed as a limitation, noting that
 #     the primary model is survey-weighted (svyolr) but the Brant test
 #     is unweighted.
+
+
+## 4b. Multicollinearity (VIF, unweighted) ---------------------------------
+
+# Use an unweighted linear model with the same predictors to assess VIF.
+# Collinearity is a property of the predictors themselves, so this provides
+# a reasonable diagnostic even without survey weights.
+
+vif_fit <- lm(
+  as.numeric(glu_cat) ~ vitd + age + sex + race,
+  data = po_data
+)
+
+vif_results <- car::vif(vif_fit)
+vif_results
+
+# Interpretation (for write-up):
+#   - VIF values < 3 (or even < 5) are typically interpreted as indicating
+#     no serious multicollinearity concerns among predictors.
+
+
+## 4c. Influential observations (Cook's distance, leverage) -----------------
+
+# Use the same unweighted linear model (vif_fit) to assess influence.
+# We examine Cook's distance and leverage (hat values) to identify
+# potentially influential cases.
+
+cook_vals <- cooks.distance(vif_fit)
+hat_vals  <- hatvalues(vif_fit)
+
+n_obs <- nrow(po_data)
+p_par <- length(coef(vif_fit))
+
+# Common rule-of-thumb cutoffs
+cook_cutoff <- 4 / n_obs
+hat_cutoff  <- 2 * p_par / n_obs
+
+infl_flags <- (cook_vals > cook_cutoff) | (hat_vals > hat_cutoff)
+
+influential_summary <- list(
+  n_observations              = n_obs,
+  n_parameters                = p_par,
+  cook_cutoff                 = cook_cutoff,
+  hat_cutoff                  = hat_cutoff,
+  n_potentially_influential   = sum(infl_flags),
+  proportion_influential      = mean(infl_flags)
+)
+
+# Optionally, inspect the first few influential indices:
+potentially_influential_indices <- which(infl_flags)
+head(potentially_influential_indices)
 
 
 ## 5. Survey-weighted ordinal regression -----------------------------------
@@ -177,8 +233,14 @@ print(summary(model_ord))
 cat("\n\nExponentiated Coefficients (OR) and 95% CI:\n\n")
 print(ord_results)
 
-cat("\n\n=== Unweighted Brant Test for Proportional Odds (Sensitivity Analysis) ===\n\n")
+cat("\n\n=== 4a. Proportional-odds Assumption (Brant Test, Unweighted) ===\n\n")
 print(po_brant)
+
+cat("\n\n=== 4b. Multicollinearity Diagnostics (VIF, Unweighted Linear Model) ===\n\n")
+print(vif_results)
+
+cat("\n\n=== 4c. Influential Observations (Cook's Distance & Leverage) ===\n\n")
+print(influential_summary)
 
 sink()  # close sink
 
