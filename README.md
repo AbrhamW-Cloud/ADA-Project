@@ -2,25 +2,24 @@
 This repository contains a fully reproducible statistical analysis examining the association between serum vitamin D levels and fasting glucose categories among U.S. adults using NHANES data from 2011–2018.
 The primary model is a survey-weighted ordinal logistic regression (svyolr), with appropriate assumption checks and diagnostics.
 
-This project was developed as part of the Advanced Data Analysis (ADA) final project at Washington University in St. Louis.
+This project was developed as part of the Advanced Data Analysis (ADA) final project at Washington University in St. Louis.All methods correspond to the Advanced Data Analysis (ADA) final project.
 
-All methods correspond to the Advanced Data Analysis (ADA) final project.
 # Project Overview
 This project evaluates how serum 25-hydroxyvitamin D (LBXVIDMS) relates to fasting glucose categories:
 
-Normal: < 100 mg/dL
+- Normal: < 100 mg/dL
 
-Impaired: 100–125 mg/dL
+- Impaired: 100–125 mg/dL
 
-Diabetic: ≥ 126 mg/dL
+- Diabetic: ≥ 126 mg/dL
 
 Because both vitamin D and fasting glucose are measured in the NHANES MEC exam component, the analysis incorporates the correct complex survey design:
 
-Stratification: SDMVSTRA
+- Stratification: SDMVSTRA
 
-Primary Sampling Units (Clusters): SDMVPSU
+- Primary Sampling Units (Clusters): SDMVPSU
 
-Sample Weights: WTMEC2YR
+- Sample Weights: WTMEC2YR
 
 Using the NHANES design ensures nationally representative and unbiased estimates.
 
@@ -49,10 +48,10 @@ The repository currently contains the following files:
 
 The script:
 
-Loads the analytic dataset (nhanes_all.csv)
+- Loads the analytic dataset (nhanes_all.csv)
 
-Creates an ordered 3-level fasting glucose outcome:
-Normal → Impaired → Diabetic
+- Creates an ordered 3-level fasting glucose outcome:
+      Normal → Impaired → Diabetic
 
 -Recodes predictors:
 
@@ -64,9 +63,9 @@ Normal → Impaired → Diabetic
 
   - race (NHANES race/ethnicity categories)
 
-Performs basic sanity checks
+- Performs basic sanity checks
 
-Handles missingness only when necessary (e.g., complete-case dataset for diagnostics)
+- Handles missingness only when necessary (e.g., complete-case dataset for diagnostics)
 ## B. Survey Design
 NHANES survey design was defined as:
 
@@ -77,6 +76,7 @@ svydesign(
   nest    = TRUE,
   data    = df
 )
+
 This provides unbiased variance estimation using Taylor linearization.
 
 
@@ -87,9 +87,9 @@ This provides unbiased variance estimation using Taylor linearization.
 
 An unweighted ordinal logistic regression using polr() is fitted, followed by a Brant test:
 
-Non-significant results indicate that the parallel slopes assumption is reasonable.
+- Non-significant results indicate that the parallel slopes assumption is reasonable.
 
-Significant results are discussed as a limitation, since the Brant test cannot incorporate survey weights.
+- Significant results are discussed as a limitation, since the Brant test cannot incorporate survey weights.
 
 4b. Multicollinearity (Variance Inflation Factors)
 
