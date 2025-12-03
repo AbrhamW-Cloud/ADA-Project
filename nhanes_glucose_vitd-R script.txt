@@ -1,5 +1,5 @@
 ############################################################
-# Title: Vitamin D and Fasting Glucose Analysis in NHANES(2011-2018)
+# Title: Vitamin D and Fasting Glucose Analysis in NHANES (2011–2018)
 # Author: Abrham Azale
 # Date: 2025
 #
@@ -8,14 +8,10 @@
 #     1. Imports the prepared NHANES dataset (nhanes_all.csv)
 #     2. Creates analysis variables (fasting glucose categories, predictors)
 #     3. Defines the complex NHANES survey design
-#     4. Checks key assumptions for survey-weighted logistic regression:
-#          - Linearity in the logit (Box–Tidwell style)
-#          - Multicollinearity (Variance Inflation Factors)
-#     5. Fits two survey-weighted logistic regression models:
-#          - Model 1: Normal vs Impaired/Diabetic
-#          - Model 2: Diabetic vs Normal/Impaired
-#     6. Fits a survey-weighted ordinal logistic regression model
-#     7. Saves model summaries and odds ratios to text files
+#     4. (Optional) Checks the proportional-odds assumption using an
+#        unweighted Brant test as a sensitivity analysis
+#     5. Fits a survey-weighted ordinal logistic regression model (svyolr)
+#     6. Saves model summary and odds ratios to a text file
 #
 #   This corresponds to my ADA final project and is written to be
 #   transparent and fully reproducible.
@@ -27,12 +23,13 @@
 library(tidyverse)   # dplyr, readr, etc.
 
 # Complex survey analysis
-library(survey)      # svydesign, svyglm, svyolr
+library(survey)      # svydesign, svyolr
 
-# Multicollinearity diagnostics
-library(car)         # vif()
+# Optional: proportional-odds assumption check (unweighted)
+library(MASS)        # polr()
+library(brant)       # brant()
 
-# Optional: handle lonely PSUs (not used here, but commonly recommended)
+# Optional: handle lonely PSUs (commonly recommended)
 # options(survey.lonely.psu = "adjust")
 
 
@@ -42,7 +39,7 @@ library(car)         # vif()
 # (Use getwd() to check or setwd() to change if necessary.)
 df <- read_csv("nhanes_all.csv")
 
-# Quick sanity checks (helpful during development; can be commented out later)
+# Quick sanity checks (can be commented out later)
 names(df)             # variable names
 summary(df$LBXVIDMS)  # vitamin D
 summary(df$LBXGLU)    # fasting glucose
@@ -52,6 +49,7 @@ summary(df$LBXGLU)    # fasting glucose
 
 df <- df %>%
   mutate(
+    # Fasting glucose categories: Normal, Impaired, Diabetic
     glu_cat = case_when(
       LBXGLU < 100 ~ "Normal",
       LBXGLU >= 100 & LBXGLU <= 125 ~ "Impaired",
@@ -64,11 +62,14 @@ df <- df %>%
       ordered = TRUE
     ),
 
+    # Continuous predictors
     vitd = LBXVIDMS,
     age  = RIDAGEYR,
 
+    # Sex as factor
     sex  = factor(RIAGENDR, labels = c("Male", "Female")),
 
+    # Race/ethnicity recode
     race = case_when(
       RIDRETH3 %in% c(1, "1", "Mexican American") ~ "Mexican American",
       RIDRETH3 %in% c(2, "2", "Other Hispanic") ~ "Other Hispanic",
@@ -113,137 +114,34 @@ nhanes_svy <- svydesign(
 #   component; using WTMEC2YR yields nationally representative estimates.
 
 
-## 4. ASSUMPTION CHECKS -----------------------------------------------------
+## 4. OPTIONAL: Proportional-odds assumption check --------------------------
+## (Unweighted Brant test, used as a sensitivity analysis only.
+##  There is no standard survey-weighted Brant test implementation.)
 
-## 4a. Binary outcome for Model 1: Normal (0) vs Impaired/Diabetic (1) -----
+# Create complete-case dataset (base R — avoids select() conflict)
+po_data <- df[, c("glu_cat", "vitd", "age", "sex", "race")]
+po_data <- po_data[complete.cases(po_data), ]
 
-nhanes_svy1 <- update(
-  nhanes_svy,
-  binary1 = ifelse(glu_cat == "Normal", 0,
-                   ifelse(!is.na(glu_cat), 1, NA))
+# Fit an unweighted ordinal logistic regression (polr)
+po_fit <- polr(
+  glu_cat ~ vitd + age + sex + race,
+  data = po_data,
+  Hess = TRUE
 )
 
-# Keep only observations with non-missing binary outcome
-nhanes_svy1_sub <- subset(nhanes_svy1, !is.na(binary1))
-
-
-## 4b. Linearity in the logit (Box–Tidwell style) --------------------------
-
-# Create Box–Tidwell interaction terms for continuous predictors
-nhanes_svy1_bt <- update(
-  nhanes_svy1,
-  vitd_log = vitd * log(vitd),
-  age_log  = age  * log(age)
-)
-
-# Linearity test for vitamin D:
-#   If vitd_log is non-significant, the logit is approximately
-#   linear in vitd.
-bt_design <- subset(nhanes_svy1_bt, !is.na(binary1))
-bt_design <- update(bt_design,
-                    sex = droplevels(sex),
-                    race = droplevels(race))
-
-test_vitd <- svyglm(
-  binary1 ~ vitd + vitd_log + age + sex + race,
-  design = bt_design,
-  family = quasibinomial()
-)
-
-summary(test_vitd)
-
-# Linearity test for age:
-#   If age_log is non-significant, the logit is approximately
-#   linear in age.
-test_age <- svyglm(
-  binary1 ~ age + age_log + vitd + sex + race,
-  design = subset(nhanes_svy1_bt, !is.na(binary1)),
-  family = quasibinomial()
-)
-summary(test_age)
+# Brant test for proportional-odds assumption
+po_brant <- brant(po_fit)
+po_brant
 
 # Interpretation (for write-up):
-#   Non-significant vitd_log and age_log terms suggest no strong
-#   evidence against the linearity-in-the-logit assumption for these
-#   predictors (although borderline p-values can be noted).
+#   - Non-significant global and variable-specific Brant tests suggest
+#     that the proportional-odds assumption is reasonably met.
+#   - Significant results can be discussed as a limitation, noting that
+#     the primary model is survey-weighted (svyolr) but the Brant test
+#     is unweighted.
 
 
-## 4c. Multicollinearity (VIF) ----------------------------------------------
-
-# Fit survey-weighted logistic model with all predictors to assess VIF
-m1_assess <- svyglm(
-  binary1 ~ vitd + age + sex + race,
-  design = nhanes_svy1_sub,
-  family = quasibinomial()
-)
-
-# Compute Variance Inflation Factors (VIFs)
-vif_m1 <- vif(m1_assess)
-vif_m1
-
-# Rule of thumb:
-#   VIF < 3 (or even < 5) indicates no serious multicollinearity concerns.
-
-
-## 5. FINAL SURVEY-WEIGHTED LOGISTIC MODELS ---------------------------------
-
-## Model 1: Normal vs Impaired/Diabetic -------------------------------------
-
-m1 <- svyglm(
-  binary1 ~ vitd + age + sex + race,
-  design = nhanes_svy1_sub,
-  family = quasibinomial()
-)
-summary(m1)
-
-# Convert log-odds to odds ratios and 95% confidence intervals
-m1_or <- exp(coef(m1))
-m1_ci <- exp(confint(m1))
-
-m1_results <- cbind(
-  OR  = m1_or,
-  LCL = m1_ci[, 1],
-  UCL = m1_ci[, 2]
-)
-m1_results
-
-
-## Model 2: Diabetic (1) vs Normal/Impaired (0) -----------------------------
-
-# Create binary outcome for diabetes vs non-diabetes
-nhanes_svy2 <- update(
-  nhanes_svy,
-  binary2 = ifelse(glu_cat == "Diabetic", 1,
-                   ifelse(!is.na(glu_cat), 0, NA))
-)
-
-nhanes_svy2_sub <- subset(nhanes_svy2, !is.na(binary2))
-
-m2 <- svyglm(
-  binary2 ~ vitd + age + sex + race,
-  design = nhanes_svy2_sub,
-  family = quasibinomial()
-)
-summary(m2)
-
-m2_or <- exp(coef(m2))
-m2_ci <- exp(confint(m2))
-
-m2_results <- cbind(
-  OR  = m2_or,
-  LCL = m2_ci[, 1],
-  UCL = m2_ci[, 2]
-)
-m2_results
-
-# Compare coefficients across the two logistic models.
-# Similar directions and magnitudes support using a proportional-odds
-# ordinal model as a secondary analysis.
-coef_comparison <- cbind(m1 = coef(m1), m2 = coef(m2))
-coef_comparison
-
-
-## 6. SECONDARY ANALYSIS: Ordinal regression --------------------------------
+## 5. Survey-weighted ordinal regression -----------------------------------
 
 # Survey-weighted proportional-odds ordinal logistic regression
 model_ord <- svyolr(
@@ -258,44 +156,31 @@ ord_coef <- coef(model_ord)
 ord_or   <- exp(ord_coef)
 ord_ci   <- exp(confint(model_ord))
 
+ord_results <- cbind(
+  OR  = ord_or,
+  LCL = ord_ci[, 1],
+  UCL = ord_ci[, 2]
+)
+ord_results
 
-## 7. Save Outputs ----------------------------------------------------------
+
+## 6. Save Outputs ----------------------------------------------------------
 
 # Create output directory if it does not already exist
 if (!dir.exists("output")) dir.create("output")
-
-### 7a. Logistic model results ----------------------------------------------
-
-sink("output/model_results_logistic.txt")
-
-cat("=== Model 1: Normal vs Impaired/Diabetic ===\n\n")
-print(summary(m1))
-cat("\nOdds Ratios and 95% CI:\n")
-print(m1_results)
-
-cat("\n\n=== Model 2: Diabetic vs Normal/Impaired ===\n\n")
-print(summary(m2))
-cat("\nOdds Ratios and 95% CI:\n")
-print(m2_results)
-
-cat("\n\n=== VIF for Multicollinearity (Model 1) ===\n\n")
-print(vif_m1)
-
-sink()  # close first sink
-
-
-### 7b. Ordinal model results -----------------------------------------------
 
 sink("output/model_results_ordinal.txt")
 
 cat("=== Survey-weighted Ordinal Regression (svyolr) ===\n\n")
 print(summary(model_ord))
 
-cat("\nExponentiated Coefficients (OR) and 95% CI:\n\n")
-print(ord_or)
-print(ord_ci)
+cat("\n\nExponentiated Coefficients (OR) and 95% CI:\n\n")
+print(ord_results)
 
-sink()  # close second sink
+cat("\n\n=== Unweighted Brant Test for Proportional Odds (Sensitivity Analysis) ===\n\n")
+print(po_brant)
+
+sink()  # close sink
 
 
 # End of script
