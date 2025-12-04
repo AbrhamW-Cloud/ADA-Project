@@ -27,11 +27,11 @@ library(tidyverse)   # dplyr, readr, etc.
 # Complex survey analysis
 library(survey)      # svydesign, svyolr
 
-# Optional: proportional-odds assumption check (unweighted)
+# Proportional-odds assumption check (unweighted)
 library(MASS)        # polr()
 library(brant)       # brant()
 
-# Optional: multicollinearity diagnostics
+# Multicollinearity diagnostics
 library(car)         # vif()
 
 # Optional: handle lonely PSUs (commonly recommended)
@@ -123,7 +123,7 @@ nhanes_svy <- svydesign(
 
 ## 4a. Proportional-odds assumption (Brant test, unweighted) ---------------
 
-# Create complete-case dataset (base R — avoids select() conflict)
+# Create complete-case dataset for unweighted diagnostics
 po_data <- df[, c("glu_cat", "vitd", "age", "sex", "race")]
 po_data <- po_data[complete.cases(po_data), ]
 
@@ -138,20 +138,11 @@ po_fit <- polr(
 po_brant <- brant(po_fit)
 po_brant
 
-# Interpretation (for write-up):
-#   - Non-significant global and variable-specific Brant tests suggest
-#     that the proportional-odds assumption is reasonably met.
-#   - Significant results can be discussed as a limitation, noting that
-#     the primary model is survey-weighted (svyolr) but the Brant test
-#     is unweighted.
-
 
 ## 4b. Multicollinearity (VIF, unweighted) ---------------------------------
 
 # Use an unweighted linear model with the same predictors to assess VIF.
-# Collinearity is a property of the predictors themselves, so this provides
-# a reasonable diagnostic even without survey weights.
-
+# Collinearity is a property of predictors, so this is acceptable.
 vif_fit <- lm(
   as.numeric(glu_cat) ~ vitd + age + sex + race,
   data = po_data
@@ -160,16 +151,8 @@ vif_fit <- lm(
 vif_results <- car::vif(vif_fit)
 vif_results
 
-# Interpretation (for write-up):
-#   - VIF values < 3 (or even < 5) are typically interpreted as indicating
-#     no serious multicollinearity concerns among predictors.
-
 
 ## 4c. Influential observations (Cook's distance, leverage) -----------------
-
-# Use the same unweighted linear model (vif_fit) to assess influence.
-# We examine Cook's distance and leverage (hat values) to identify
-# potentially influential cases.
 
 cook_vals <- cooks.distance(vif_fit)
 hat_vals  <- hatvalues(vif_fit)
@@ -184,15 +167,15 @@ hat_cutoff  <- 2 * p_par / n_obs
 infl_flags <- (cook_vals > cook_cutoff) | (hat_vals > hat_cutoff)
 
 influential_summary <- list(
-  n_observations              = n_obs,
-  n_parameters                = p_par,
-  cook_cutoff                 = cook_cutoff,
-  hat_cutoff                  = hat_cutoff,
-  n_potentially_influential   = sum(infl_flags),
-  proportion_influential      = mean(infl_flags)
+  n_observations            = n_obs,
+  n_parameters              = p_par,
+  cook_cutoff               = cook_cutoff,
+  hat_cutoff                = hat_cutoff,
+  n_potentially_influential = sum(infl_flags),
+  proportion_influential    = mean(infl_flags)
 )
 
-# Optionally, inspect the first few influential indices:
+# Optionally, inspect indices of potentially influential observations
 potentially_influential_indices <- which(infl_flags)
 head(potentially_influential_indices)
 
