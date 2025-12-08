@@ -98,6 +98,7 @@ lm(as.numeric(glu_cat) ~ vitd + age + sex + race)
 VIFs are computed using car::vif().
 
   - VIF < 3–5 indicates no problematic multicollinearity.
+    
 4c. Influential Observations
 
 Influential cases are identified using:
